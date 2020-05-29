@@ -5,13 +5,13 @@ DEFAULT_VARIANCE = 1
 
 ONLY_FOLLOWING_POINTS = True
 
-PLOT_RESULT = False
+PLOT_RESULT = True
 PLOT_BEWERTUNGSKRITERIUM = True
 
 # iterate over all files
 for i in range(11):
-    # filename = '../VehiclePoints/example' + str(3) + '.txt'
-    filename = '../VehiclePoints/example' + str(i) + '.txt'
+    # filename = './VehiclePoints/example' + str(3) + '.txt'
+    filename = './VehiclePoints/example' + str(i) + '.txt'
     # read point coordinates from file
     points = process_file(filename)
 

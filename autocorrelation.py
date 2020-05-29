@@ -9,15 +9,15 @@ NUM_OF_DELTAS = 10
 
 ONLY_FOLLOWING_POINTS = True
 
-PLOT_POINTS_WITH_NUMBERS = False
-PLOT_SM_GRAPHICS_ACF = False
-PLOT_SM_GRAPHICS_PartialACF = False
-PLOT_XCORR = False
+PLOT_POINTS_WITH_NUMBERS = True
+PLOT_SM_GRAPHICS_ACF = True
+PLOT_SM_GRAPHICS_PartialACF = True
+PLOT_XCORR = True
 
 # process data
 # for i in range(11):
-# filename = '../VehiclePoints/example' + str(i) + '.txt'
-filename = '../VehiclePoints/example' + str(3) + '.txt'
+# filename = './VehiclePoints/example' + str(i) + '.txt'
+filename = './VehiclePoints/example' + str(3) + '.txt'
 # read point coordinates from file
 points = process_file(filename)
 
