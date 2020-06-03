@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from scipy.signal import find_peaks
-
+from scipy import signal
+from scipy import ndimage
 
 
 class GaussianDistribution:
@@ -34,8 +34,11 @@ class Point:
                 print(str(neighbour_idx + 1), ".Neighbour: ", neighbour.idx)
 
 
-def calculate_distance_between_two_points(point1, point2):
-    return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2 + (point1.z - point2.z)**2)
+def calculate_distance_between_two_points(point1, point2, distance_mode):
+    if distance_mode == 'euclidian':
+        return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2 + (point1.z - point2.z)**2)
+    elif distance_mode == 'x_distance':
+        return np.abs(point1.x - point2.x)
 
 
 def gaussian(x, mu, sig):
@@ -73,13 +76,13 @@ def sort_list_of_points_along_x_axis(unsorted_list_of_points):
     return sorted_list_of_points
 
 
-def get_gaussian_distribution(point_list, variance):
-    gaussian_dsitribution = np.zeros((1000))
+def get_gaussian_distribution(point_list, x_values,  variance):
+    gaussian_distribution = np.zeros(x_values.size)
     for point in point_list:
-        for x in range(gaussian_dsitribution.size):
-            gaussian_dsitribution[x] += gaussian(x, point.x * 100, variance)
+        for x in x_values:
+            gaussian_distribution[int(x - x_values[0])] += gaussian(x, point.x * 100, variance)
 
-    return gaussian_dsitribution
+    return gaussian_distribution
 
 
 def move_gaussian_distribution(distribution, delta):
@@ -88,13 +91,12 @@ def move_gaussian_distribution(distribution, delta):
     return distribution
 
 
-
 def print_list_of_points(list_of_points):
     for point in list_of_points:
         point.print_point()
 
 
-def update_point_list_with_neighbours(point_list, only_use_following_points):
+def update_point_list_with_neighbours(point_list, only_use_following_points, distance_mode):
     for new_point in point_list:
         for neighbour_point in point_list:
             if new_point.idx == neighbour_point.idx:
@@ -103,7 +105,7 @@ def update_point_list_with_neighbours(point_list, only_use_following_points):
             if only_use_following_points and new_point.x > neighbour_point.x:
                 continue
 
-            distance_between_new_and_neighbour = calculate_distance_between_two_points(new_point, neighbour_point)
+            distance_between_new_and_neighbour = calculate_distance_between_two_points(new_point, neighbour_point, distance_mode)
 
             if new_point.distance_to_nearest_neighbour is None:
                 new_point.distance_to_nearest_neighbour = distance_between_new_and_neighbour
@@ -121,6 +123,13 @@ def transform_to_point_class_list(point_list_as_array):
                       nearest_neighbour=None, distance_to_nearest_neighbour=None)
         point_list_as_class_points.append(point)
     return point_list_as_class_points
+
+
+def get_boundaries_of_points(points):
+    left_boarder = points[0].x
+    right_boarder = points[-1].x
+
+    return left_boarder, right_boarder
 
 
 def plot_list_of_points(right_points, left_points, with_numbers_as_text, style):
@@ -155,15 +164,14 @@ def plot_points(points, style):
         plt.plot(point.x, point.y, style)
 
 
-
 def plot_list_of_gaussian_points(list_of_points, color, linestyle, linewidth):
     for gaussian_point in list_of_points:
         gaussian_point.plot_point(color, linestyle, linewidth)
 
 
-def get_near_points(point, point_list, distance_threshold, only_use_following_points):
+def get_near_points(point, point_list, distance_threshold, only_use_following_points, distance_mode):
     for point_list_element in point_list:
-        distance = calculate_distance_between_two_points(point, point_list_element)
+        distance = calculate_distance_between_two_points(point, point_list_element, distance_mode)
         # don't add self
         if distance == 0:
             continue
@@ -185,17 +193,17 @@ def get_points_from_one_rail(all_points, side):
 
 
 def list_distances_for_histogram_for_bewertungskriterium(selected_points, only_use_following_points, distance_thr,
-                                                         default_variance):
+                                                         distance_mode, default_variance):
     list_of_raw_distances = []
     list_of_distances = np.zeros(5000)
     list_of_multipliers = [1./4., 1./3., 1./2., 1, 2, 3, 4]
     list_of_weights = [1./4., 1./3., 1./2., 1., -1., -1./3., -1./4.]
     for selected_point in selected_points:
         get_near_points(point=selected_point, point_list=selected_points, distance_threshold=distance_thr,
-                        only_use_following_points=only_use_following_points )
+                        only_use_following_points=only_use_following_points, distance_mode=distance_mode)
         if len(selected_point.neighbours) != 0:
             for neighbour in selected_point.neighbours:
-                distance = calculate_distance_between_two_points(selected_point, neighbour)
+                distance = calculate_distance_between_two_points(selected_point, neighbour, distance_mode)
                 list_of_raw_distances.append(distance)
 
                 for multiplier, weight in zip(list_of_multipliers, list_of_weights):
@@ -206,12 +214,16 @@ def list_distances_for_histogram_for_bewertungskriterium(selected_points, only_u
 def plot_bewertungskriterium(distance_list, side):
     final_distance_max_method = np.argmax(distance_list)
 
-    fig = plt.figure(side + ' points')
-    plt.plot(distance_list)
+    if side == 'left':
+        color = 'r'
+    else:
+        color = 'g'
+
+    # fig = plt.figure(side + ' points')
+    plt.plot(distance_list, color=color)
     plt.title('final_distance_max_method: ' + str(final_distance_max_method) + 'cm')
     plt.xlabel('distance [cm]')
     plt.ylabel('weight')
-    plt.show()
 
 
 def convert_gaussian_to_array(gaussians):
@@ -341,4 +353,10 @@ def process_file(filename_):
         if len(line_elements) == 4:
             points_[line_idx] = [float(line_elements[0]), float(line_elements[1]), float(line_elements[2])]
     return points_
+
+
+def autocorr(gaussian_distribution):
+    correlation = signal.correlate(gaussian_distribution, gaussian_distribution, 'full')
+    # print('correlation {}'.format(correlation))
+    return correlation[int(correlation.size / 2):]
 

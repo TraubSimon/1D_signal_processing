@@ -1,7 +1,7 @@
 from utils import *
 
 
-def list_distances_for_histogram_in_general(selected_points, only_use_following_points):
+def list_distances_for_histogram_in_general(selected_points, only_use_following_points, distance_mode):
     update_point_list_with_neighbours(selected_points, only_use_following_points)
     list_of_distances = []
     for point in selected_points:
