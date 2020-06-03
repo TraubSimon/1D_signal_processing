@@ -28,7 +28,8 @@ class Point:
 
     def print_point(self):
         print("Point ", str(self.idx), " with neighbour ", str(self.nearest_neighbour), " and distance ",
-              str(self.distance_to_nearest_neighbour), " at x=", str(self.x), " y=", str(self.y), " and z=", str(self.z))
+              str(self.distance_to_nearest_neighbour), " at x=", str(self.x), " y=", str(self.y),
+              " and z=", str(self.z))
         if len(self.neighbours) != 0:
             for neighbour_idx, neighbour in enumerate(self.neighbours):
                 print(str(neighbour_idx + 1), ".Neighbour: ", neighbour.idx)
@@ -105,7 +106,8 @@ def update_point_list_with_neighbours(point_list, only_use_following_points, dis
             if only_use_following_points and new_point.x > neighbour_point.x:
                 continue
 
-            distance_between_new_and_neighbour = calculate_distance_between_two_points(new_point, neighbour_point, distance_mode)
+            distance_between_new_and_neighbour = calculate_distance_between_two_points(new_point, neighbour_point,
+                                                                                       distance_mode)
 
             if new_point.distance_to_nearest_neighbour is None:
                 new_point.distance_to_nearest_neighbour = distance_between_new_and_neighbour
@@ -144,13 +146,13 @@ def plot_list_of_points(right_points, left_points, with_numbers_as_text, style):
             for point in point_list:
                 plt.plot(point.x, point.y, style)
 
-    fig = plt.figure('Points with index numbers')
-    ax1 = plt.subplot(121)
+    plt.figure('Points with index numbers')
+    plt.subplot(121)
     execute_plot(left_points)
     plt.title('Left')
     plt.xlabel('x')
     plt.ylabel('y')
-    ax2 = plt.subplot(122)
+    plt.subplot(122)
     execute_plot(right_points)
     plt.title('Right')
     plt.xlabel('x')
@@ -162,6 +164,24 @@ def plot_list_of_points(right_points, left_points, with_numbers_as_text, style):
 def plot_points(points, style):
     for point in points:
         plt.plot(point.x, point.y, style)
+
+
+def plot_bewertungskriterium_result(all_pts, left_pts, right_pts, filtered_left, filtered_right):
+    fig, gs = plot_divided_sides(all_pts=all_pts, left_pts=left_pts, right_pts=right_pts)
+
+    left_plot_autocorr = fig.add_subplot(gs[1, 0])
+    left_plot_autocorr.set_xlabel('distance')
+    plot_bewertungskriterium(filtered_left[:1000], 'left')
+    left_value_to_take = np.argmax(filtered_left[:1000])
+    plt.title('left: {}'.format(left_value_to_take))
+
+    right_plot_autocorr = fig.add_subplot(gs[1, 1])
+    right_plot_autocorr.set_xlabel('distance')
+    plot_bewertungskriterium(filtered_right[:1000], 'right')
+    right_value_to_take = np.argmax(filtered_right[:1000])
+    plt.title('right: {}'.format(right_value_to_take))
+
+
 
 
 def plot_list_of_gaussian_points(list_of_points, color, linestyle, linewidth):
@@ -187,17 +207,17 @@ def get_points_from_one_rail(all_points, side):
         mask = all_points[:, 1] < 0
     elif side == 'right':
         mask = all_points[:, 1] > 0
+    else:
+        mask = 0
 
     masked_points = all_points[mask]
     return transform_to_point_class_list(masked_points)
 
 
 def list_distances_for_histogram_for_bewertungskriterium(selected_points, only_use_following_points, distance_thr,
-                                                         distance_mode, default_variance):
+                                                         distance_mode, multipliers, weights):
     list_of_raw_distances = []
     list_of_distances = np.zeros(5000)
-    list_of_multipliers = [1./4., 1./3., 1./2., 1, 2, 3, 4]
-    list_of_weights = [1./4., 1./3., 1./2., 1., -1., -1./3., -1./4.]
     for selected_point in selected_points:
         get_near_points(point=selected_point, point_list=selected_points, distance_threshold=distance_thr,
                         only_use_following_points=only_use_following_points, distance_mode=distance_mode)
@@ -206,9 +226,62 @@ def list_distances_for_histogram_for_bewertungskriterium(selected_points, only_u
                 distance = calculate_distance_between_two_points(selected_point, neighbour, distance_mode)
                 list_of_raw_distances.append(distance)
 
-                for multiplier, weight in zip(list_of_multipliers, list_of_weights):
+                for multiplier, weight in zip(multipliers, weights):
                     list_of_distances[int(np.around(distance * 100 * multiplier))] += weight
     return list_of_distances, list_of_raw_distances
+
+
+def plot_statsmodel_signal_correlation(all_points, left, right, left_corr, right_corr, normalized=False):
+    fig, gs = plot_divided_sides(all_pts=all_points, left_pts=left, right_pts=right)
+
+    left_plot_autocorr = fig.add_subplot(gs[1, 0])
+    left_plot_autocorr.set_xlabel('distance')
+    plt.plot(left_corr[:1000], color='r')
+
+    left_value_to_take = np.argmax(left_corr[20:1000]) + 20
+    if normalized:
+        left_peak_threshold_value = get_peak_value(left_corr)
+        plt.title('left: argmax: {} and Peak_threshold: {}'.format(left_value_to_take, left_peak_threshold_value))
+    else:
+        plt.title('left: argmax: {}'.format(left_value_to_take))
+
+
+
+    right_plot_autocorr = fig.add_subplot(gs[1, 1])
+    right_plot_autocorr.set_xlabel('distance')
+    plt.plot(right_corr[:1000], color='g')
+
+    right_value_to_take = np.argmax(right_corr[20:1000]) + 20
+    if normalized:
+        right_peak_threshold_value = get_peak_value(right_corr)
+        plt.title('right: argmax: {} and Peak_threshold: {}'.format(right_value_to_take, right_peak_threshold_value))
+    else:
+        plt.title('left: argmax: {}'.format(left_value_to_take))
+
+
+def get_peak_value(values):
+    # delete first peak for autocorrelation with delta = 0
+    for value_idx, value in enumerate(values):
+        if value < 0.01:
+            values = values[value_idx:1000]
+            break
+    peaks = values[values < 0.24]
+    idxs = np.arange(len(values))[values > 0.24] + value_idx
+    results = []
+    sequence = []
+    for i in range(len(idxs) - 1):
+        if idxs[i + 1] - idxs[i] == 1:
+            sequence.append(idxs[i])
+        else:
+            results.append(int(np.mean(sequence)))
+            sequence = []
+    try:
+        results.append(int(np.mean(sequence)))
+    except ValueError:
+        pass
+
+    return results
+
 
 
 def plot_bewertungskriterium(distance_list, side):
@@ -226,17 +299,17 @@ def plot_bewertungskriterium(distance_list, side):
     plt.ylabel('weight')
 
 
-def convert_gaussian_to_array(gaussians):
-    array = np.zeros(shape=len(gaussians))
-    for point_idx, point in enumerate(gaussians):
+def convert_gaussian_to_array(gs):
+    array = np.zeros(shape=len(gs))
+    for point_idx, point in enumerate(gs):
         array[point_idx] = point.mean
     return array
 
 
-def get_list_and_array_from_gaussian_with_movement(gaussian, movement=None):
+def get_list_and_array_from_gaussian_with_movement(gs, movement=None):
     moved_point_list = []
-    moved_point_array = np.zeros(len(gaussian))
-    for gaussian_point_idx, gaussian_point in enumerate(gaussian):
+    moved_point_array = np.zeros(len(gs))
+    for gaussian_point_idx, gaussian_point in enumerate(gs):
         if movement is None:
             moved_point_list.append(
                 GaussianDistribution(mean=gaussian_point.mean, variance=gaussian_point.variance))
@@ -259,13 +332,13 @@ def add_two_gaussian_lists(list_1, list_2):
 
 
 def plot_xcorr(mean_right, mean_left, moved_right, moved_left, delta=0):
-    fig = plt.figure('plt.xcorr with delta {}'.format(delta))
-    ax1 = plt.subplot(121)
+    plt.figure('plt.xcorr with delta {}'.format(delta))
+    plt.subplot(121)
     plt.xcorr(mean_left, moved_left)
     plt.title('Left')
     plt.xlabel('lags')
     plt.ylabel('partial autocorrelation')
-    ax2 = plt.subplot(122)
+    plt.subplot(122)
     plt.xcorr(mean_right, moved_right)
     plt.title('Right')
     plt.xlabel('lags')
@@ -274,8 +347,9 @@ def plot_xcorr(mean_right, mean_left, moved_right, moved_left, delta=0):
     plt.show()
 
 
-def plot_moved_and_added_point_lists(gaussian_left, moved_left, added_left, gaussian_right, moved_right, added_right, delta, color=0):
-    fig = plt.figure('autocorrelation with delta {}'.format(delta))
+def plot_moved_and_added_point_lists(gaussian_left, moved_left, added_left, gaussian_right, moved_right, added_right,
+                                     delta, color=0):
+    plt.figure('autocorrelation with delta {}'.format(delta))
 
     ax1 = plt.subplot(321)
     plot_list_of_gaussian_points(gaussian_left, color='g', linestyle='-', linewidth=1.)
@@ -283,15 +357,15 @@ def plot_moved_and_added_point_lists(gaussian_left, moved_left, added_left, gaus
     plt.ylabel('y')
     plt.title('Left')
 
-    ax2 = plt.subplot(323, sharex=ax1)
+    plt.subplot(323, sharex=ax1)
     plot_list_of_gaussian_points(moved_left, color='r', linestyle=':', linewidth=1.)
     plt.xlabel('x')
     plt.ylabel('y')
 
-    ax3 = plt.subplot(325, sharex=ax1)
+    plt.subplot(325, sharex=ax1)
     plot_list_of_gaussian_points(gaussian_left, color='g', linestyle='--', linewidth=.5)
     plot_list_of_gaussian_points(moved_left, color='r', linestyle=':', linewidth=.5)
-    plot_list_of_gaussian_points(added_left, color=plt.cm.jet(color), linestyle='-', linewidth=1.)
+    plot_list_of_gaussian_points(added_left, color=plt.cm.yjet(color), linestyle='-', linewidth=1.)
     plt.xlabel('x')
     plt.ylabel('y')
 
@@ -301,12 +375,12 @@ def plot_moved_and_added_point_lists(gaussian_left, moved_left, added_left, gaus
     plt.ylabel('y')
     plt.title('Right')
 
-    ax2 = plt.subplot(324, sharex=ax3)
+    plt.subplot(324, sharex=ax3)
     plot_list_of_gaussian_points(moved_right, color='r', linestyle=':', linewidth=1.)
     plt.xlabel('x')
     plt.ylabel('y')
 
-    ax3 = plt.subplot(326, sharex=ax3)
+    plt.subplot(326, sharex=ax3)
     plot_list_of_gaussian_points(gaussian_right, color='g', linestyle='--', linewidth=.5)
     plot_list_of_gaussian_points(moved_right, color='r', linestyle=':', linewidth=.5)
     plot_list_of_gaussian_points(added_right, color=plt.cm.jet(color), linestyle='-', linewidth=1.)
@@ -316,17 +390,23 @@ def plot_moved_and_added_point_lists(gaussian_left, moved_left, added_left, gaus
     plt.show()
 
 
-def plot_results(all_points, left, right, left_distances, right_distances):
+def plot_divided_sides(all_pts, left_pts, right_pts):
     fig = plt.figure(constrained_layout=True)
     gs = gridspec.GridSpec(2, 2, figure=fig)
     point_cloud = fig.add_subplot(gs[0, :])
-    plot_points(left, 'rx')
-    plot_points(right, 'gx')
-    plot_points(all_points, 'b.')
+    plot_points(left_pts, 'rx')
+    plot_points(right_pts, 'gx')
+    plot_points(all_pts, 'b.')
 
     plt.title('point_cloud')
     point_cloud.set_xlabel('x')
     point_cloud.set_ylabel('y')
+
+    return fig, gs
+
+
+def plot_results(all_points, left, right, left_distances, right_distances):
+    fig, gs = plot_divided_sides(all_pts=all_points, left_pts=left, right_pts=right)
 
     left_histogram = fig.add_subplot(gs[1, 0])
     left_histogram.hist(left_distances, color='r')
@@ -359,4 +439,3 @@ def autocorr(gaussian_distribution):
     correlation = signal.correlate(gaussian_distribution, gaussian_distribution, 'full')
     # print('correlation {}'.format(correlation))
     return correlation[int(correlation.size / 2):]
-

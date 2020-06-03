@@ -1,7 +1,7 @@
 from utils import *
 import statsmodels.api as sm
 import numpy as np
-from scipy import signal
+# from scipy import signal
 
 VARIANCE = 10
 PLOT_GAUSSIAN_DISTRIBUTION = False
@@ -74,5 +74,3 @@ if PLOT_STATSMODEL_SIGNAL_CORRELATION:
     wanted_correlation = autocorr(gaussian_distribution)
     plt.plot(wanted_correlation)
     plt.show()
-
-

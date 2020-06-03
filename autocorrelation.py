@@ -1,9 +1,10 @@
 from utils import *
 import statsmodels.api as sm
-from scipy import signal
+# from scipy import signal
 
 # define parameters
 DISTANCE_THRESHOLD = 10
+PEAK_THRESHOLD = 0.5
 VARIANCE = 5
 NUM_OF_DELTAS = 10
 
@@ -18,7 +19,7 @@ PLOT_STATSMODEL_SIGNAL_CORRELATION = True
 # process data
 for i in range(11):
     filename = './VehiclePoints/example' + str(i) + '.txt'
-    #filename = './VehiclePoints/example' + str(3) + '.txt'
+    # filename = './VehiclePoints/example' + str(3) + '.txt'
     # read point coordinates from file
     points = process_file(filename)
 
@@ -54,28 +55,15 @@ for i in range(11):
         left_autocorr = autocorr(left_gaussian_distribution)
         right_autocorr = autocorr(right_gaussian_distribution)
 
-        fig = plt.figure(constrained_layout=True)
-        gs = gridspec.GridSpec(2, 2, figure=fig)
-        point_cloud = fig.add_subplot(gs[0, :])
-        plot_points(sorted_left_points, 'rx')
-        plot_points(sorted_right_points, 'gx')
-        plot_points(sorted_points, 'b.')
+        normalized_left_autocorr = left_autocorr / left_autocorr[0]
+        normalized_right_autocorr = right_autocorr / right_autocorr[0]
 
-        plt.title('point_cloud')
-        point_cloud.set_xlabel('x')
-        point_cloud.set_ylabel('y')
+        plot_statsmodel_signal_correlation(all_points=sorted_points, left=sorted_left_points, right=sorted_right_points,
+                                           left_corr=normalized_left_autocorr, right_corr=normalized_right_autocorr,
+                                           normalized=True)
 
-        left_plot_autocorr = fig.add_subplot(gs[1, 0])
-        left_plot_autocorr.set_xlabel('distance')
-        plt.plot(left_autocorr[:1000], color='r')
-        plt.title('left')
-
-        right_plot_autocorr = fig.add_subplot(gs[1, 1])
-        right_plot_autocorr.set_xlabel('distance')
-        plt.plot(right_autocorr[:1000], color='g')
-        plt.title('right')
-
-
+        # plot_statsmodel_signal_correlation(all_points=sorted_points, left=sorted_left_points, right=sorted_right_points,
+        #                                   left_corr=left_autocorr, right_corr=right_autocorr)
 
     # acf plot with sm graphics
     if PLOT_SM_GRAPHICS_ACF:
@@ -96,6 +84,7 @@ for i in range(11):
         right_moved_gaussian_distribution = move_gaussian_distribution(right_gaussian_distribution, delta)
 
         if PLOT_XCORR:
-            plot_xcorr(right_gaussian_distribution, left_gaussian_distribution, right_moved_gaussian_distribution, left_moved_gaussian_distribution, delta)
+            plot_xcorr(right_gaussian_distribution, left_gaussian_distribution, right_moved_gaussian_distribution,
+                       left_moved_gaussian_distribution, delta)
 
 plt.show()
