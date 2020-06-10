@@ -38,27 +38,12 @@ class Point:
 def calculate_distance_between_two_points(point1, point2, distance_mode):
     if distance_mode == 'euclidian':
         return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2 + (point1.z - point2.z)**2)
-    elif distance_mode == 'x_distance':
+    else: # for x_distance
         return np.abs(point1.x - point2.x)
 
 
 def gaussian(x, mu, sig):
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-
-
-def add_gaussians(gauss_1, gauss_2):
-    new_mean = (gauss_1.variance**2 * gauss_2.mean + gauss_2.variance**2 * gauss_1.mean) / \
-               (gauss_1.variance**2 + gauss_2.variance**2)
-    new_variance = 1 / (1 / gauss_1.variance**2 + 1 / gauss_2.variance**2)
-    return GaussianDistribution(new_mean, new_variance)
-
-
-def convert_point_x_list_to_gaussian(point_list, default_variance):
-    list_of_gaussian_points = []
-    for point in point_list:
-        new_gaussian_point = GaussianDistribution(mean=point.x, variance=default_variance)
-        list_of_gaussian_points.append(new_gaussian_point)
-    return list_of_gaussian_points
 
 
 def sort_list_of_points_along_x_axis(unsorted_list_of_points):
@@ -92,32 +77,6 @@ def move_gaussian_distribution(distribution, delta):
     return distribution
 
 
-def print_list_of_points(list_of_points):
-    for point in list_of_points:
-        point.print_point()
-
-
-def update_point_list_with_neighbours(point_list, only_use_following_points, distance_mode):
-    for new_point in point_list:
-        for neighbour_point in point_list:
-            if new_point.idx == neighbour_point.idx:
-                continue
-
-            if only_use_following_points and new_point.x > neighbour_point.x:
-                continue
-
-            distance_between_new_and_neighbour = calculate_distance_between_two_points(new_point, neighbour_point,
-                                                                                       distance_mode)
-
-            if new_point.distance_to_nearest_neighbour is None:
-                new_point.distance_to_nearest_neighbour = distance_between_new_and_neighbour
-                new_point.nearest_neighbour = neighbour_point.idx
-            else:
-                if distance_between_new_and_neighbour < new_point.distance_to_nearest_neighbour:
-                    new_point.distance_to_nearest_neighbour = distance_between_new_and_neighbour
-                    new_point.nearest_neighbour = neighbour_point.idx
-
-
 def transform_to_point_class_list(point_list_as_array):
     point_list_as_class_points = []
     for selected_point_idx, selected_point in enumerate(point_list_as_array):
@@ -134,29 +93,34 @@ def get_boundaries_of_points(points):
     return left_boarder, right_boarder
 
 
-def plot_list_of_points(right_points, left_points, with_numbers_as_text, style):
+def plot_list_of_points(all_points, right_points, left_points, with_numbers_as_text, style):
 
     def execute_plot(point_list):
         if with_numbers_as_text:
             for point in point_list:
-                plt.plot(point.x, point.y, style)
+                plt.plot(point.x, point.y)
                 plt.text(point.x, point.y, str(point.idx))
 
         else:
             for point in point_list:
                 plt.plot(point.x, point.y, style)
 
-    plt.figure('Points with index numbers')
-    plt.subplot(121)
+
+    fig, gs, pcl = plot_divided_sides(all_points, left_points, right_points)
+
+    left_plot = fig.add_subplot(gs[1, 0], sharex=pcl, sharey=pcl)
+    style = 'rx'
     execute_plot(left_points)
     plt.title('Left')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.subplot(122)
+    left_plot.set_xlabel('x')
+    left_plot.set_ylabel('y')
+
+    right_plot = fig.add_subplot(gs[1, 1], sharex=pcl, sharey=pcl)
+    style = 'gx'
     execute_plot(right_points)
     plt.title('Right')
-    plt.xlabel('x')
-    plt.ylabel('y')
+    right_plot.set_xlabel('x')
+    right_plot.set_ylabel('y')
 
     plt.show()
 
@@ -182,13 +146,6 @@ def plot_bewertungskriterium_result(all_pts, left_pts, right_pts, filtered_left,
     plt.title('right: {}'.format(right_value_to_take))
 
 
-
-
-def plot_list_of_gaussian_points(list_of_points, color, linestyle, linewidth):
-    for gaussian_point in list_of_points:
-        gaussian_point.plot_point(color, linestyle, linewidth)
-
-
 def get_near_points(point, point_list, distance_threshold, only_use_following_points, distance_mode):
     for point_list_element in point_list:
         distance = calculate_distance_between_two_points(point, point_list_element, distance_mode)
@@ -203,9 +160,9 @@ def get_near_points(point, point_list, distance_threshold, only_use_following_po
 
 
 def get_points_from_one_rail(all_points, side):
-    if side == 'left':
+    if side == 'right':
         mask = all_points[:, 1] < 0
-    elif side == 'right':
+    elif side == 'left':
         mask = all_points[:, 1] > 0
     else:
         mask = 0
@@ -283,7 +240,6 @@ def get_peak_value(values):
     return results
 
 
-
 def plot_bewertungskriterium(distance_list, side):
     final_distance_max_method = np.argmax(distance_list)
 
@@ -297,38 +253,6 @@ def plot_bewertungskriterium(distance_list, side):
     plt.title('final_distance_max_method: ' + str(final_distance_max_method) + 'cm')
     plt.xlabel('distance [cm]')
     plt.ylabel('weight')
-
-
-def convert_gaussian_to_array(gs):
-    array = np.zeros(shape=len(gs))
-    for point_idx, point in enumerate(gs):
-        array[point_idx] = point.mean
-    return array
-
-
-def get_list_and_array_from_gaussian_with_movement(gs, movement=None):
-    moved_point_list = []
-    moved_point_array = np.zeros(len(gs))
-    for gaussian_point_idx, gaussian_point in enumerate(gs):
-        if movement is None:
-            moved_point_list.append(
-                GaussianDistribution(mean=gaussian_point.mean, variance=gaussian_point.variance))
-            moved_point_array[gaussian_point_idx] = gaussian_point.mean
-        else:
-            moved_point_list.append(
-                GaussianDistribution(mean=gaussian_point.mean + movement, variance=gaussian_point.variance))
-            moved_point_array[gaussian_point_idx] = gaussian_point.mean + movement
-
-    return moved_point_list, moved_point_array
-
-
-def add_two_gaussian_lists(list_1, list_2):
-    added_point_list = []
-    added_point_array = np.zeros(len(list_1))
-    for added_point_idx, (point_1, point_2) in enumerate(zip(list_1, list_2)):
-        added_point_list.append(add_gaussians(point_1, point_2))
-        added_point_array[added_point_idx] = add_gaussians(point_1, point_2).mean
-    return added_point_list, added_point_array
 
 
 def plot_xcorr(mean_right, mean_left, moved_right, moved_left, delta=0):
@@ -347,49 +271,6 @@ def plot_xcorr(mean_right, mean_left, moved_right, moved_left, delta=0):
     plt.show()
 
 
-def plot_moved_and_added_point_lists(gaussian_left, moved_left, added_left, gaussian_right, moved_right, added_right,
-                                     delta, color=0):
-    plt.figure('autocorrelation with delta {}'.format(delta))
-
-    ax1 = plt.subplot(321)
-    plot_list_of_gaussian_points(gaussian_left, color='g', linestyle='-', linewidth=1.)
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Left')
-
-    plt.subplot(323, sharex=ax1)
-    plot_list_of_gaussian_points(moved_left, color='r', linestyle=':', linewidth=1.)
-    plt.xlabel('x')
-    plt.ylabel('y')
-
-    plt.subplot(325, sharex=ax1)
-    plot_list_of_gaussian_points(gaussian_left, color='g', linestyle='--', linewidth=.5)
-    plot_list_of_gaussian_points(moved_left, color='r', linestyle=':', linewidth=.5)
-    plot_list_of_gaussian_points(added_left, color=plt.cm.yjet(color), linestyle='-', linewidth=1.)
-    plt.xlabel('x')
-    plt.ylabel('y')
-
-    ax3 = plt.subplot(322)
-    plot_list_of_gaussian_points(gaussian_right, color='g', linestyle='-', linewidth=1.)
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Right')
-
-    plt.subplot(324, sharex=ax3)
-    plot_list_of_gaussian_points(moved_right, color='r', linestyle=':', linewidth=1.)
-    plt.xlabel('x')
-    plt.ylabel('y')
-
-    plt.subplot(326, sharex=ax3)
-    plot_list_of_gaussian_points(gaussian_right, color='g', linestyle='--', linewidth=.5)
-    plot_list_of_gaussian_points(moved_right, color='r', linestyle=':', linewidth=.5)
-    plot_list_of_gaussian_points(added_right, color=plt.cm.jet(color), linestyle='-', linewidth=1.)
-    plt.xlabel('x')
-    plt.ylabel('y')
-
-    plt.show()
-
-
 def plot_divided_sides(all_pts, left_pts, right_pts):
     fig = plt.figure(constrained_layout=True)
     gs = gridspec.GridSpec(2, 2, figure=fig)
@@ -402,7 +283,7 @@ def plot_divided_sides(all_pts, left_pts, right_pts):
     point_cloud.set_xlabel('x')
     point_cloud.set_ylabel('y')
 
-    return fig, gs
+    return fig, gs, point_cloud
 
 
 def plot_results(all_points, left, right, left_distances, right_distances):
