@@ -122,7 +122,7 @@ def plot_list_of_points(all_points, right_points, left_points, with_numbers_as_t
     right_plot.set_xlabel('x')
     right_plot.set_ylabel('y')
 
-    plt.show()
+    # plt.show()
 
 
 def plot_points(points, style):
@@ -131,7 +131,7 @@ def plot_points(points, style):
 
 
 def plot_bewertungskriterium_result(all_pts, left_pts, right_pts, filtered_left, filtered_right):
-    fig, gs = plot_divided_sides(all_pts=all_pts, left_pts=left_pts, right_pts=right_pts)
+    fig, gs, pointcloud = plot_divided_sides(all_pts=all_pts, left_pts=left_pts, right_pts=right_pts)
 
     left_plot_autocorr = fig.add_subplot(gs[1, 0])
     left_plot_autocorr.set_xlabel('distance')
@@ -189,7 +189,7 @@ def list_distances_for_histogram_for_bewertungskriterium(selected_points, only_u
 
 
 def plot_statsmodel_signal_correlation(all_points, left, right, left_corr, right_corr, normalized=False):
-    fig, gs = plot_divided_sides(all_pts=all_points, left_pts=left, right_pts=right)
+    fig, gs, pointcloud = plot_divided_sides(all_pts=all_points, left_pts=left, right_pts=right)
 
     left_plot_autocorr = fig.add_subplot(gs[1, 0])
     left_plot_autocorr.set_xlabel('distance')
@@ -198,9 +198,9 @@ def plot_statsmodel_signal_correlation(all_points, left, right, left_corr, right
     left_value_to_take = np.argmax(left_corr[20:1000]) + 20
     if normalized:
         left_peak_threshold_value = get_peak_value(left_corr)
-        plt.title('left: argmax: {} and Peak_threshold: {}'.format(left_value_to_take, left_peak_threshold_value))
+        plt.title('argmax: {} and PT: {}'.format(left_value_to_take, left_peak_threshold_value))
     else:
-        plt.title('left: argmax: {}'.format(left_value_to_take))
+        plt.title('argmax: {}'.format(left_value_to_take))
 
 
 
@@ -211,9 +211,9 @@ def plot_statsmodel_signal_correlation(all_points, left, right, left_corr, right
     right_value_to_take = np.argmax(right_corr[20:1000]) + 20
     if normalized:
         right_peak_threshold_value = get_peak_value(right_corr)
-        plt.title('right: argmax: {} and Peak_threshold: {}'.format(right_value_to_take, right_peak_threshold_value))
+        plt.title('argmax: {} and PT: {}'.format(right_value_to_take, right_peak_threshold_value))
     else:
-        plt.title('left: argmax: {}'.format(left_value_to_take))
+        plt.title('argmax: {}'.format(left_value_to_take))
 
 
 def get_peak_value(values):
@@ -287,7 +287,7 @@ def plot_divided_sides(all_pts, left_pts, right_pts):
 
 
 def plot_results(all_points, left, right, left_distances, right_distances):
-    fig, gs = plot_divided_sides(all_pts=all_points, left_pts=left, right_pts=right)
+    fig, gs, pointcloud = plot_divided_sides(all_pts=all_points, left_pts=left, right_pts=right)
 
     left_histogram = fig.add_subplot(gs[1, 0])
     left_histogram.hist(left_distances, color='r')

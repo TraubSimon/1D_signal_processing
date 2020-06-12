@@ -27,6 +27,10 @@ for point_idx in range(len(sorted_left_points) - 1):
                                                        'x')
     list_of_distances.append(distance)
 
+# MLE for geometric distribution p=n/sum(x_i)
+p = len(list_of_distances) / sum(list_of_distances)
+print('MLE for geometric distrbutions: p = {}'.format(p))
+
 
 # plot list of distances
 list_of_indexes = np.arange(len(list_of_distances))
@@ -38,7 +42,7 @@ mean = np.mean(list_of_distances)
 mu = mean
 p = 1 / mean
 variance = 1 - p / (p * p)
-print(p)
+print('Calculation of p with mean and p = 1 / mean: p = {}'.format(p))
 
 mean, var, skew, kurt =  poisson.stats(mu, moments='mvsk')
 print('poisson: mean = {}, var = {}, skew = {}, kurt = {}'.format(mean, var, skew, kurt))
